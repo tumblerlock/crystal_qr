@@ -31,18 +31,37 @@ module QR
       end
     end
 
+    def each(direction : Symbol, &block : T, Int32, Int32, Int32 -> Nil)
+      iterable_rows = @row_indices
+      iterable_rows.reverse! if [:bt_lr, :bt_rl].includes? direction
+
+      iterable_cols = @col_indices
+      iterable_cols.reverse! if [:tb_rl, :bt_rl].includes? direction
+
+      counter = 0
+
+      iterable_rows.each do |row|
+        iterable_cols.each do |col|
+          yield @matrix.raw[row][col], counter, row, col
+          counter += 1
+        end
+      end
+    end
+
+    def map(direction : Symbol, &block : T, Int32, Int32, Int32 -> T)
+      each direction do |value, counter, row, col|
+        @matrix.raw[row][col] = yield value, counter, row, col
+      end
+    end
+
     def render
       print "  "
-      puts (0...@col_indices.size).map { |n| n % 10 }.join
+      print (0...@col_indices.size).map { |n| n % 10 }.join
 
-      @row_indices.each_with_index do |row, i|
-        print "#{i % 10} "
-        @col_indices.each do |col|
-          print @matrix.raw[row][col]
-        end
-        puts
+      each :tb_lr do |val, _, row, col|
+        print "\n#{row % 10} " if col == 0
+        print val
       end
-      puts
     end
   end
 end

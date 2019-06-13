@@ -44,11 +44,50 @@ module QR
     end
 
     def format
-      @data[12][0..7, 12..20].map do
-        next_value
+      @data[12][0..7, 12..13, 15..20] = FORMAT
+      @data[0..6, 12..13, 15..20][12] = FORMAT
+    end
+
+    def fill_data
+      @data[0..11][0..1].map(:tb_lr) do |value, offset, row, col|
+        stream(offset).colorize(:green).to_s
       end
 
-      @data[0..6, 12..13, 15..20][12]
+      @data[0..11][2..3].map(:bt_lr) do |value, offset, row, col|
+        stream(offset + 24).colorize(:cyan).to_s
+      end
+
+      @data[0..11][4..5].map(:tb_lr) do |value, offset, row, col|
+        stream(offset + 48).colorize(:green).to_s
+      end
+
+      @data[0..11][6..7].map(:bt_lr) do |value, offset, row, col|
+        stream(offset + 72).colorize(:cyan).to_s
+      end
+
+      @data[0..13, 15..20][8..9].map(:tb_lr) do |value, offset, row, col|
+        stream(offset + 96).colorize(:green).to_s
+      end
+
+      @data[0..13, 15..20][10..11].map(:bt_lr) do |value, offset, row, col|
+        stream(offset + 136).colorize(:cyan).to_s
+      end
+
+      @data[8..11][12..13].map(:tb_lr) do |value, offset, row, col|
+        stream(offset + 176).colorize(:green).to_s
+      end
+
+      @data[8..11][15..16].map(:bt_lr) do |value, offset, row, col|
+        stream(offset + 184).colorize(:cyan).to_s
+      end
+
+      @data[8..11][17..18].map(:tb_lr) do |value, offset, row, col|
+        stream(offset + 192).colorize(:green).to_s
+      end
+
+      @data[8..11][19..20].map(:bt_lr) do |value, offset, row, col|
+        stream(offset + 200).colorize(:cyan).to_s
+      end
     end
 
     def fill
@@ -56,75 +95,15 @@ module QR
       guide(x: 14, y: 14, size: 7)
       guide(x: 0, y: 14, size: 7)
 
+      format
       timing
 
-      (0..20).each do |row|
-        (0..20).each do |col|
-          value = OFF
-
-          case
-          # format
-          when col == 12 && (row <= 6 || row == 13 || row >= 15)
-            value = FORMAT
-          when row == 12 && (col <= 7 || 12 <= col <= 13 || col >= 15)
-            value = FORMAT
-
-          # data
-          when 0 <= row <= 11 && [0,1,4,5].includes? col
-            offset = col / 2 * 24
-            offset += row * 2 + (col % 2)
-
-            value = stream(offset).colorize(:green).to_s
-
-          when 0 <= row <= 11 && [2,3,6,7].includes? col
-            offset = col / 2 * 24 - 2
-            offset += (12 - row) * 2 + (col % 2)
-
-            value = stream(offset).colorize(:cyan).to_s
-
-          when (0 <= row <= 13 || row >= 15) && [8,9].includes? col
-            offset = 96
-            offset += row * 2 + (col % 2)
-            offset -= 2 if row >= 15
-
-            value = stream(offset).colorize(:green).to_s
-
-          when (0 <= row <= 13 || row >= 15) && [10,11].includes? col
-            offset = 134
-            offset += (21 - row) * 2 + (col % 2)
-            offset -= 2 if row <= 13
-
-            value = stream(offset).colorize(:cyan).to_s
-
-          when 8 <= row <= 12 && 12 <= col <= 13
-            offset = 176
-            offset += (row - 8) * 2 + (col % 2)
-
-            value = stream(offset).colorize(:green).to_s
-
-          when 8 <= row <= 12 && [15,16,19,20].includes? col
-            offset = 182
-            offset += 16 if col >= 19
-            offset += (12 - row) * 2 + ((col + 1) % 2)
-
-            value = stream(offset).colorize(:cyan).to_s
-
-          when 8 <= row <= 12 && [17,18].includes? col
-            offset = 192
-            offset += (row - 8) * 2 + ((col + 1) % 2)
-
-            value = stream(offset).colorize(:green).to_s
-
-          end
-
-          @data[row][col] = value unless value == OFF
-        end
-      end
+      fill_data
     end
 
     private def stream(position : Int) : String
-      data = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-"
       data = "aabbccddeeffgghhiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz"
+      data = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-"
       data[position % data.size].to_s
     end
 
