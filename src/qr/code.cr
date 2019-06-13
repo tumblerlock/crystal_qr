@@ -4,7 +4,6 @@ require "./matrix"
 
 module QR
   class Code
-    include Enumerable(Bool)
 
     WHITE = " ".colorize.back(:white).to_s
     YELLOW = " ".colorize.back(:yellow).to_s
@@ -90,7 +89,7 @@ module QR
       end
     end
 
-    def fill
+    def fill(&block : Int32 -> String)
       guide(x: 14, y: 0, size: 7)
       guide(x: 14, y: 14, size: 7)
       guide(x: 0, y: 14, size: 7)
@@ -99,14 +98,8 @@ module QR
       timing
 
       fill_data do |offset|
-        stream offset
+        yield offset
       end
-    end
-
-    private def stream(position : Int) : String
-      data = "aabbccddeeffgghhiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz"
-      data = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-"
-      data[position % data.size].to_s
     end
 
     def print
