@@ -1,7 +1,30 @@
 require "colorize"
 
+module RangeUtils
+  private def flatten_ranges(ranges : Array)
+    flattened = [] of Int32
+
+    ranges.each do |range|
+      case range
+      when Int
+        flattened << range
+      when Range
+        range.each do |position|
+          flattened << position
+        end
+      end
+    end
+
+    flattened
+  end
+end
+
 class Matrix(T)
-  def initialize(*, rows : Int32, cols : Int32, &block : (Int32, Int32) -> T)
+  include RangeUtils
+
+  getter rows, cols
+
+  def initialize(*, @rows : Int32, @cols : Int32, &block : (Int32, Int32) -> T)
     @data = Array(Array(T)).new(rows) do |row|
       Array(T).new(cols) do |col|
         yield row, col
@@ -19,62 +42,68 @@ class Matrix(T)
     initialize(rows: size, cols: size, &block)
   end
 
-  def [](*ranges)
-    positions = [] of Int32
+  def raw
+    @data
+  end
 
-    ranges.each do |range|
-      case range
-      when Int
-        positions << range
-      when Range
-        range.each do |position|
-          positions << position
-        end
+  def [](*ranges)
+    positions = flatten_ranges ranges.to_a
+    ReferenceMatrix(T).new self, rows: positions
+  end
+
+  def []=(*val)
+    {% raise "Cannot implicitly assign a value to all columns for a rowset" %}
+  end
+
+  def render
+    ReferenceMatrix(T).new(self).render
+  end
+end
+
+class ReferenceMatrix(T)
+  include RangeUtils
+
+  def initialize(
+    @matrix : Matrix(T),
+    * ,
+    rows @row_indices : Array(Int32) = [] of Int32,
+    cols @col_indices : Array(Int32) = [] of Int32
+  )
+    @row_indices = (0...@matrix.rows).to_a if @row_indices.empty?
+    @col_indices = (0...@matrix.cols).to_a if @col_indices.empty?
+  end
+
+  def [](*ranges)
+    self.class.new(
+      @matrix,
+      rows: @row_indices,
+      cols: flatten_ranges(ranges.to_a)
+    )
+  end
+
+  def []=(*ranges)
+    value = ranges.last
+    cols = flatten_ranges ranges.to_a[0...-1]
+
+    @row_indices.each do |row|
+      cols.each do |col|
+        @matrix.raw[row][col] = value
       end
     end
-
-    rows = Array(Array(T)).new(positions.size) do |i|
-      @data[ positions[i] ]
-    end
-
-    MatrixSubSelector(T).new rows
   end
 
   def render
     print "  "
-    puts (0...@data[0].size).map { |n| n % 10 }.join
+    puts (0...@col_indices.size).map { |n| n % 10 }.join
 
-    @data.each_with_index do |row, i|
+    @row_indices.each_with_index do |row, i|
       print "#{i % 10} "
-      row.each_with_index do |cell, j|
-        print cell
+      @col_indices.each do |col|
+        print @matrix.raw[row][col]
       end
       puts
     end
-  end
-end
-
-class MatrixSubSelector(T)
-  def initialize(@rows : Array(Array(T)))
-  end
-
-  def [](*ranges)
-    positions = [] of Int32
-
-    ranges.each do |range|
-      case range
-      when Int
-        positions << range
-      when Range
-        range.each do |position|
-          positions << position
-        end
-      end
-    end
-
-    Matrix(T).new(rows: @rows.size, cols: positions.size) do |row, col|
-      @rows[row][ positions[col] ]
-    end
+    puts
   end
 end
 
@@ -83,8 +112,12 @@ m = Matrix(String).new size: 8 do |row, col|
 end
 
 m.render
-puts
-m[2..3, 5, 6..7][1..3].render
+m[2..3, 5, 6..7].render
+m[2].render
+m[0..2].render
+m[0..2][2..4].render
+m[0..2][2] = "\e[37;47mY\e[0m"
+m.render
 
 class Code
   include Enumerable(Bool)
