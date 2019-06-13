@@ -1,5 +1,7 @@
 require "colorize"
 
+require "./matrix"
+
 module QR
   class Code
     include Enumerable(Bool)
@@ -13,52 +15,32 @@ module QR
     TIMING = " ".colorize.back(:magenta).to_s
     DATA = " ".colorize.back(:green).to_s
 
-    getter data : Array(Array(String))
+    getter data : Matrix(String)
     # row, col
 
     def initialize()
-      @data = Array(Array(String)).new(21) do
-        Array(String).new(21) { OFF }
-      end
+      @data = Matrix.new size: 21, default_value: OFF
     end
 
     def guide(x col, y row, size)
       max_col = col + size - 1
       max_row = row + size - 1
 
-      (col..max_col).each do |i|
-        @data[row][i] = ALIGNMENT
-        @data[max_row][i] = ALIGNMENT
-      end
-
-      (row..max_row).each do |i|
-        @data[i][col] = ALIGNMENT
-        @data[i][max_col] = ALIGNMENT
-      end
+      @data[row..max_row][col, max_col] = ALIGNMENT
+      @data[row, max_row][col..max_col] = ALIGNMENT
 
       col += 2
       row += 2
       size -= 4
       max_col = col + size - 1
       max_row = row + size - 1
-
-      (row..max_row).each do |i|
-        (col..max_col).each do |j|
-          @data[i][j] = ALIGNMENT
-        end
-      end
+      @data[row..max_row][col..max_col] = ALIGNMENT
     end
 
     def timing
       @data[7][12] = TIMING
-
-      @data[ 8][14] = TIMING
-      @data[10][14] = TIMING
-      @data[12][14] = TIMING
-
-      @data[14][ 8] = TIMING
-      @data[14][10] = TIMING
-      @data[14][12] = TIMING
+      @data[8,10,12][14] = TIMING
+      @data[14][8,10,12] = TIMING
     end
 
     def format
@@ -147,14 +129,7 @@ module QR
     end
 
     def print
-      puts "  012345678901234567890"
-      data.each_with_index do |row, i|
-        print "#{i % 10} "
-        row.each_with_index do |cell, j|
-          print cell
-        end
-        puts
-      end
+      data.render
     end
 
     def print_upright
