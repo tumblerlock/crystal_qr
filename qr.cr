@@ -1,5 +1,91 @@
 require "colorize"
 
+class Matrix(T)
+  def initialize(*, rows : Int32, cols : Int32, &block : (Int32, Int32) -> T)
+    @data = Array(Array(T)).new(rows) do |row|
+      Array(T).new(cols) do |col|
+        yield row, col
+      end
+    end
+  end
+
+  def initialize(*, size : Int32, default_value : T)
+    initialize rows: size, cols: size do |row, col|
+      default_value
+    end
+  end
+
+  def initialize(*, size : Int32, &block : (Int32, Int32) -> T)
+    initialize(rows: size, cols: size, &block)
+  end
+
+  def [](*ranges)
+    positions = [] of Int32
+
+    ranges.each do |range|
+      case range
+      when Int
+        positions << range
+      when Range
+        range.each do |position|
+          positions << position
+        end
+      end
+    end
+
+    rows = Array(Array(T)).new(positions.size) do |i|
+      @data[ positions[i] ]
+    end
+
+    MatrixSubSelector(T).new rows
+  end
+
+  def render
+    print "  "
+    puts (0...@data[0].size).map { |n| n % 10 }.join
+
+    @data.each_with_index do |row, i|
+      print "#{i % 10} "
+      row.each_with_index do |cell, j|
+        print cell
+      end
+      puts
+    end
+  end
+end
+
+class MatrixSubSelector(T)
+  def initialize(@rows : Array(Array(T)))
+  end
+
+  def [](*ranges)
+    positions = [] of Int32
+
+    ranges.each do |range|
+      case range
+      when Int
+        positions << range
+      when Range
+        range.each do |position|
+          positions << position
+        end
+      end
+    end
+
+    Matrix(T).new(rows: @rows.size, cols: positions.size) do |row, col|
+      @rows[row][ positions[col] ]
+    end
+  end
+end
+
+m = Matrix(String).new size: 8 do |row, col|
+  (row * col % 10).to_s
+end
+
+m.render
+puts
+m[2..3, 5, 6..7][1..3].render
+
 class Code
   include Enumerable(Bool)
 
@@ -13,51 +99,73 @@ class Code
   DATA = " ".colorize.back(:green).to_s
 
   getter data : Array(Array(String))
+  # row, col
 
   def initialize()
     @data = Array(Array(String)).new(21) do
-      Array(String).new(21) { "" }
+      Array(String).new(21) { OFF }
     end
   end
 
+  def guide(x col, y row, size)
+    max_col = col + size - 1
+    max_row = row + size - 1
+
+    (col..max_col).each do |i|
+      @data[row][i] = ALIGNMENT
+      @data[max_row][i] = ALIGNMENT
+    end
+
+    (row..max_row).each do |i|
+      @data[i][col] = ALIGNMENT
+      @data[i][max_col] = ALIGNMENT
+    end
+
+    col += 2
+    row += 2
+    size -= 4
+    max_col = col + size - 1
+    max_row = row + size - 1
+
+    (row..max_row).each do |i|
+      (col..max_col).each do |j|
+        @data[i][j] = ALIGNMENT
+      end
+    end
+  end
+
+  def timing
+    @data[7][12] = TIMING
+
+    @data[ 8][14] = TIMING
+    @data[10][14] = TIMING
+    @data[12][14] = TIMING
+
+    @data[14][ 8] = TIMING
+    @data[14][10] = TIMING
+    @data[14][12] = TIMING
+  end
+
+  def format
+    @data[12][0..7, 12..20].map do
+      next_value
+    end
+
+    @data[0..6, 12..13, 15..20][12]
+  end
+
   def fill
+    guide(x: 14, y: 0, size: 7)
+    guide(x: 14, y: 14, size: 7)
+    guide(x: 0, y: 14, size: 7)
+
+    timing
+
     (0..20).each do |row|
       (0..20).each do |col|
         value = OFF
 
         case
-        # outer guides
-        when [0,6].includes?(row) && col >= 14
-          value = ALIGNMENT
-        when [14,20].includes?(row) && (col >= 14 || col <= 6)
-          value = ALIGNMENT
-        when [14,20].includes?(col) && (row >= 14 || row <= 6)
-          value = ALIGNMENT
-        when row >= 14 && [6,0].includes? col
-          value = ALIGNMENT
-
-        # inner guides
-        when 16 <= col <= 18 && (2 <= row <= 4 || 16 <= row <= 18)
-          value = ALIGNMENT
-        when 2 <= col <= 4 && 16 <= row <= 18
-          value = ALIGNMENT
-
-        # timing
-        when row == 14 && 8 <= col <= 12
-          if col % 2 == 1
-            value = OFF
-          else
-            value = TIMING
-          end
-        when col == 14 && 8 <= row <= 12
-          if row % 2 == 1
-            value = OFF
-          else
-            value = TIMING
-          end
-        when col == 12 && row == 7
-          value = TIMING
-
         # format
         when col == 12 && (row <= 6 || row == 13 || row >= 15)
           value = FORMAT
@@ -112,18 +220,21 @@ class Code
 
         end
 
-        @data[row][col] = value
+        @data[row][col] = value unless value == OFF
       end
     end
   end
 
   private def stream(position : Int) : String
     data = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-"
+    data = "aabbccddeeffgghhiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz"
     data[position % data.size].to_s
   end
 
   def print
+    puts "  012345678901234567890"
     data.each_with_index do |row, i|
+      print "#{i % 10} "
       row.each_with_index do |cell, j|
         print cell
       end
@@ -144,7 +255,6 @@ end
 
 c = Code.new
 c.fill
-c.print
 
 # data = [[] of Int32]
 # data[0] << 1
