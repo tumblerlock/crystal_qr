@@ -48,45 +48,45 @@ module QR
       @data[0..6, 12..13, 15..20][12] = FORMAT
     end
 
-    def fill_data
+    def fill_data(&block : Int32 -> String)
       @data[0..11][0..1].map(:tb_lr) do |value, offset, row, col|
-        stream(offset).colorize(:green).to_s
+        yield offset
       end
 
       @data[0..11][2..3].map(:bt_lr) do |value, offset, row, col|
-        stream(offset + 24).colorize(:cyan).to_s
+        yield offset + 24
       end
 
       @data[0..11][4..5].map(:tb_lr) do |value, offset, row, col|
-        stream(offset + 48).colorize(:green).to_s
+        yield offset + 48
       end
 
       @data[0..11][6..7].map(:bt_lr) do |value, offset, row, col|
-        stream(offset + 72).colorize(:cyan).to_s
+        yield offset + 72
       end
 
       @data[0..13, 15..20][8..9].map(:tb_lr) do |value, offset, row, col|
-        stream(offset + 96).colorize(:green).to_s
+        yield offset + 96
       end
 
       @data[0..13, 15..20][10..11].map(:bt_lr) do |value, offset, row, col|
-        stream(offset + 136).colorize(:cyan).to_s
+        yield offset + 136
       end
 
       @data[8..11][12..13].map(:tb_lr) do |value, offset, row, col|
-        stream(offset + 176).colorize(:green).to_s
+        yield offset + 176
       end
 
       @data[8..11][15..16].map(:bt_lr) do |value, offset, row, col|
-        stream(offset + 184).colorize(:cyan).to_s
+        yield offset + 184
       end
 
       @data[8..11][17..18].map(:tb_lr) do |value, offset, row, col|
-        stream(offset + 192).colorize(:green).to_s
+        yield offset + 192
       end
 
       @data[8..11][19..20].map(:bt_lr) do |value, offset, row, col|
-        stream(offset + 200).colorize(:cyan).to_s
+        yield offset + 200
       end
     end
 
@@ -98,7 +98,9 @@ module QR
       format
       timing
 
-      fill_data
+      fill_data do |offset|
+        stream offset
+      end
     end
 
     private def stream(position : Int) : String
